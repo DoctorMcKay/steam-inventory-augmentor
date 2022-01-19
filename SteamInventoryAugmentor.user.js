@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Inventory Augmentor
 // @namespace    https://www.doctormckay.com/
-// @version      2.0.0
+// @version      2.1.0
 // @description  Add "duplicate" tag to items in Steam inventories, and one-click gemifying
 // @author       Dr. McKay
 // @match        *://steamcommunity.com/*/*/inventory
@@ -139,4 +139,25 @@
 	var node = document.createElement('style');
 	node.innerHTML = '.mckay_plus_gems:before {display:block;position:absolute;content:"+" attr(data-gemcount) " GEMS";color:#FFF;text-align:center;font-size:16px;width:100%;font-family:"Motiva Sans Light", Arial, Helvetica, sans-serif;padding-top:30px;} .mckay_plus_gems > img {opacity:0.2;}';
 	document.body.appendChild(node);
+
+    // Multi-sell links
+    var origPopulateMarketActions = window.PopulateMarketActions;
+    window.PopulateMarketActions = function(elActions, item) {
+        origPopulateMarketActions.apply(this, arguments);
+
+        // Delay by 1 second to account for fade transition
+        setTimeout(() => {
+            if (!item.description || !item.description.marketable || !item.description.market_hash_name || !item.description.commodity) {
+                return; // not marketable or not a commodity item
+            }
+
+            // If we have more than one of this item in our inventory, we want to add a multi-sell link
+            var count = Object.keys(window.g_ActiveInventory.m_rgAssets).filter(id => window.g_ActiveInventory.m_rgAssets[id].description.market_hash_name == item.description.market_hash_name && window.g_ActiveInventory.m_rgAssets[id].description.marketable).length;
+            if (count > 1) {
+                var insertBefore = $J('.item_market_actions:visible>div>div')[1];
+                var link = $J('<div style="height: 24px"><a href="https://steamcommunity.com/market/multisell?appid=' + item.appid + '&contextid=' + item.contextid + '&items[]=' + encodeURIComponent(item.description.market_hash_name) + '">Sell Multiple</a></div>')[0];
+                insertBefore.parentNode.insertBefore(link, insertBefore);
+            }
+        }, 1000);
+    }
 })();
